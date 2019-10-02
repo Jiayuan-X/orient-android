@@ -28,10 +28,12 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -45,7 +47,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     // test device - replace with the real BLE address of your sensor, which you can find
     // by scanning for devices with the NRF Connect App
 
-    private static final String ORIENT_BLE_ADDRESS = "D5:71:F3:51:9E:73";
+    private static final String ORIENT_BLE_ADDRESS = "EB:25:6B:57:DF:30";
 
     private static final String ORIENT_QUAT_CHARACTERISTIC = "00001526-1212-efde-1523-785feabcd125";
     private static final String ORIENT_RAW_CHARACTERISTIC = "ef680406-9b35-4933-9b10-52ffa9740042";
@@ -99,6 +101,9 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     private RadioGroup mountingRadioGroup;
 
     private final int RC_LOCATION_AND_STORAGE = 1;
+
+    //private ArrayList<DataPoint> datas;
+    private float[] gyros;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -221,54 +226,9 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
                 rb = findViewById(selectedId);
                 mounting_str = rb.getText().toString();
 
-
-                // make a new filename based on the start timestamp
-                String file_ts = new SimpleDateFormat("yyyyMMdd'T'HHmmss").format(new Date());
-                file = new File(path, "PDIoT_" + group_str + "_" + file_ts + ".csv");
-
-                try {
-                    writer = new CSVWriter(new FileWriter(file), ',');
-                } catch (IOException e) {
-                    Log.e("MainActivity", "Caught IOException: " + e.getMessage());
-                }
-
-                String[] h1 = {"# PDIoT walking data"};
-                writer.writeNext(h1);
-
-                String[] h2 = {"# Start time: " + file_ts};
-                writer.writeNext(h2);
-
-                String[] h3 = {"# Group: " + group_str};
-                writer.writeNext(h3);
-
-                String[] h4 = {"# Subject: " + name_str};
-                writer.writeNext(h4);
-
-                String[] h5 = {"# Activity type: " + act_type_str};
-                writer.writeNext(h5);
-
-                String[] h6 = {"# Sensor position: " + position_str};
-                writer.writeNext(h6);
-
-                String[] h7 = {"# Side of body: " + side_str};
-                writer.writeNext(h7);
-
-                String[] h8 = {"# Sensor mounting: " + mounting_str};
-                writer.writeNext(h8);
-
-                String[] h9 = {"# Number of steps: " + steps_str};
-                writer.writeNext(h9);
-
-                String[] h10 = {"# Notes: " + notes_str};
-                writer.writeNext(h10);
-
-                String[] h11 = {""};
-                writer.writeNext(h11);
-
-                String[] entries = "timestamp#seq#accel_x#accel_y#accel_z#gyro_x#gyro_y#gyro_z".split("#");
-                writer.writeNext(entries);
-
                 logging = true;
+                //datas = new ArrayList<DataPoint>() {};
+                gyros = new float[30];
                 capture_started_timestamp = System.currentTimeMillis();
                 counter = 0;
                 Toast.makeText(this, "Start logging",
@@ -279,11 +239,11 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
         stop_button.setOnClickListener(v-> {
             logging = false;
+            //datas = null;
+            gyros = null;
             stop_button.setEnabled(false);
             try {
-                writer.flush();
-                writer.close();
-                Toast.makeText(this,"Recording saved",
+                Toast.makeText(this,"Tracking stopped",
                         Toast.LENGTH_SHORT).show();
             } catch (IOException e) {
                 Log.e("MainActivity", "Caught IOException: " + e.getMessage());
@@ -432,54 +392,105 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
         if (logging) {
             //String[] entries = "first#second#third".split("#");
-            String[] entries = {Long.toString(ts),
-                    Integer.toString(counter),
-                    Float.toString(accel_x),
-                    Float.toString(accel_y),
-                    Float.toString(accel_z),
-                    Float.toString(gyro_x),
-                    Float.toString(gyro_y),
-                    Float.toString(gyro_z),
-            };
-            writer.writeNext(entries);
+//            String[] entries = {Long.toString(ts),
+//                    Integer.toString(counter),
+//                    Float.toString(accel_x),
+//                    Float.toString(accel_y),
+//                    Float.toString(accel_z),
+//                    Float.toString(gyro_x),
+//                    Float.toString(gyro_y),
+//                    Float.toString(gyro_z),
+//            };
+//            writer.writeNext(entries);
+            //datas.add(new DataPoint(System.currentTimeMillis(), gyro_z));
+            gyros[counter] = gyro_z;
+            counter += 1;
 
-            if (counter % 12 == 0) {
-                long elapsed_time = System.currentTimeMillis() - capture_started_timestamp;
-                int total_secs = (int)elapsed_time / 1000;
-                int s = total_secs % 60;
-                int m = total_secs / 60;
+            if (counter == 29) {
+                // we've got a block to work with
+                SavGolay sg = new SavGolay(4, 4, 4);
+                float[] filtered = sg.filterData(gyros);
+                gyros = new float[30];
+                counter = 0;
 
-                String m_str = Integer.toString(m);
-                if (m_str.length() < 2) {
-                    m_str = "0" + m_str;
+
+                int peaks = 0;
+                for (int i = 0; i<filtered.length-2; i++) {
+                    if ((filtered[i+1]-filtered[i])*(filtered[i+2]-filtered[i+1]) <= 0) { // changed sign?
+                        peaks += 1;
+                    }
                 }
-
-                String s_str = Integer.toString(s);
-                if (s_str.length() < 2) {
-                    s_str = "0" + s_str;
-                }
-
-
-                Long elapsed_capture_time = System.currentTimeMillis() - capture_started_timestamp;
-                float connected_secs = elapsed_capture_time / 1000.f;
-                freq = counter / connected_secs;
-                //Log.i("OrientAndroid", "Packet count: " + Integer.toString(n) + ", Freq: " + Float.toString(freq));
-
-                String time_str = m_str + ":" + s_str;
-
-                String accel_str = "Accel: (" + accel_x + ", " + accel_y + ", " + accel_z + ")";
-                String gyro_str = "Gyro: (" + gyro_x + ", " + gyro_y + ", " + gyro_z + ")";
-                String freq_str = "Freq: " + freq;
-
-                runOnUiThread(() -> {
-                    captureTimetextView.setText(time_str);
-                    accelTextView.setText(accel_str);
-                    gyroTextView.setText(gyro_str);
-                    freqTextView.setText(freq_str);
-                });
             }
 
-            counter += 1;
+//            if (counter % 12 == 0) {
+//                long elapsed_time = System.currentTimeMillis() - capture_started_timestamp;
+//                int total_secs = (int)elapsed_time / 1000;
+//                int s = total_secs % 60;
+//                int m = total_secs / 60;
+//
+//                String m_str = Integer.toString(m);
+//                if (m_str.length() < 2) {
+//                    m_str = "0" + m_str;
+//                }
+//
+//                String s_str = Integer.toString(s);
+//                if (s_str.length() < 2) {
+//                    s_str = "0" + s_str;
+//                }
+//
+//
+//                Long elapsed_capture_time = System.currentTimeMillis() - capture_started_timestamp;
+//                float connected_secs = elapsed_capture_time / 1000.f;
+//                freq = counter / connected_secs;
+//                //Log.i("OrientAndroid", "Packet count: " + Integer.toString(n) + ", Freq: " + Float.toString(freq));
+//
+//                String time_str = m_str + ":" + s_str;
+//
+//                String accel_str = "Accel: (" + accel_x + ", " + accel_y + ", " + accel_z + ")";
+//                String gyro_str = "Gyro: (" + gyro_x + ", " + gyro_y + ", " + gyro_z + ")";
+//                String freq_str = "Freq: " + freq;
+//
+//                runOnUiThread(() -> {
+//                    captureTimetextView.setText(time_str);
+//                    accelTextView.setText(accel_str);
+//                    gyroTextView.setText(gyro_str);
+//                    freqTextView.setText(freq_str);
+//                });
+//            }
         }
     }
+
+    // Function to give
+// index of the median
+    static int median(float a[],
+                      int l, int r)
+    {
+        int n = r - l + 1;
+        n = (n + 1) / 2 - 1;
+        return n + l;
+    }
+
+    // Function to
+// calculate IQR
+    static float IQR(float [] a)
+    {
+        Arrays.sort(a);
+        int n = a.length;
+
+        // Index of median
+        // of entire data
+        int mid_index = median(a, 0, n);
+
+        // Median of first half
+        float Q1 = a[median(a, 0,
+                mid_index)];
+
+        // Median of second half
+        float Q3 = a[median(a,
+                mid_index + 1, n)];
+
+        // IQR calculation
+        return (Q3 - Q1);
+    }
+
 }
