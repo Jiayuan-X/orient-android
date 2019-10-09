@@ -103,7 +103,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     private final int RC_LOCATION_AND_STORAGE = 1;
 
     //private ArrayList<DataPoint> datas;
-    private float[] gyros;
+    private double[] gyros;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -228,7 +228,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
                 logging = true;
                 //datas = new ArrayList<DataPoint>() {};
-                gyros = new float[30];
+                gyros = new double[30];
                 capture_started_timestamp = System.currentTimeMillis();
                 counter = 0;
                 Toast.makeText(this, "Start logging",
@@ -242,12 +242,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
             //datas = null;
             gyros = null;
             stop_button.setEnabled(false);
-            try {
-                Toast.makeText(this,"Tracking stopped",
-                        Toast.LENGTH_SHORT).show();
-            } catch (IOException e) {
-                Log.e("MainActivity", "Caught IOException: " + e.getMessage());
-            }
+
             start_button.setEnabled(true);
         });
 
@@ -403,14 +398,15 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 //            };
 //            writer.writeNext(entries);
             //datas.add(new DataPoint(System.currentTimeMillis(), gyro_z));
-            gyros[counter] = gyro_z;
+            double magnitude = Math.sqrt(gyro_x*gyro_x + gyro_y*gyro_y + gyro_z*gyro_z);
+            gyros[counter] = magnitude;
             counter += 1;
 
             if (counter == 29) {
                 // we've got a block to work with
                 SavGolay sg = new SavGolay(4, 4, 4);
-                float[] filtered = sg.filterData(gyros);
-                gyros = new float[30];
+                double[] filtered = sg.filterData(gyros);
+                gyros = new double[30];
                 counter = 0;
 
 
