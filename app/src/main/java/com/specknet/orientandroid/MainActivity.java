@@ -54,6 +54,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
     private static final String ORIENT_QUAT_CHARACTERISTIC = "00001526-1212-efde-1523-785feabcd125";
     private static final String ORIENT_RAW_CHARACTERISTIC = "ef680406-9b35-4933-9b10-52ffa9740042";
+    private static final int COUNT_WINDOW = 100;
 
     private static final boolean raw = true;
     private RxBleDevice orient_device;
@@ -156,7 +157,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
             start_button.setEnabled(false);
             logging = true;
             //datas = new ArrayList<DataPoint>() {};
-            gyros = new double[30];
+            gyros = new double[COUNT_WINDOW];
             capture_started_timestamp = System.currentTimeMillis();
             counter = 0;
             Toast.makeText(this, "Start logging",
@@ -330,7 +331,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
             gyros[counter] = magnitude;
             counter += 1;
 
-            if (counter == 29) {
+            if (counter == COUNT_WINDOW) {
                 // we've got a block to work with
                 SavGolay sg = new SavGolay(4, 4, 4);
                 double[] filtered = sg.filterData(gyros);
@@ -339,16 +340,16 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
                 int peaks = 0;
                 for (int i = 0; i<filtered.length-2; i++) {
-                    if ((filtered[i+1]-filtered[i])*(filtered[i+2]-filtered[i+1]) <= 0) { // changed sign?
+                    if ((filtered[i+1]-filtered[i])*(filtered[i+2]-filtered[i+1]) < 0) { // changed sign?
                         peaks += 1;
                     }
                 }
                 steps += peaks;
 
-                com.jjoe64.graphview.series.DataPoint[] points = new com.jjoe64.graphview.series.DataPoint[30];
-                com.jjoe64.graphview.series.DataPoint[] filteredpoints = new com.jjoe64.graphview.series.DataPoint[30];
+                com.jjoe64.graphview.series.DataPoint[] points = new com.jjoe64.graphview.series.DataPoint[COUNT_WINDOW];
+                com.jjoe64.graphview.series.DataPoint[] filteredpoints = new com.jjoe64.graphview.series.DataPoint[COUNT_WINDOW];
 
-                for (int i = 0; i < 30; i++) {
+                for (int i = 0; i < COUNT_WINDOW; i++) {
                     points[i] = new com.jjoe64.graphview.series.DataPoint(i, gyros[i]);
                     filteredpoints[i] = new com.jjoe64.graphview.series.DataPoint(i, filtered[i]);
                 }
@@ -365,7 +366,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
                     graph2.addSeries(series2);
                 });
 
-                gyros = new double[30];
+                gyros = new double[COUNT_WINDOW];
             }
 
 //            if (counter % 12 == 0) {
