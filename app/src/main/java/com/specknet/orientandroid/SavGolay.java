@@ -1,6 +1,6 @@
 package com.specknet.orientandroid;
 
-import Jama.*;
+import Java.*;
 
 /** Class implements the Savitzy-Golay filter.  The algorithm is based on
  * the algorithm used in
@@ -242,7 +242,6 @@ public class SavGolay{
         }
 
         Matrix A = new Matrix(matrix);
-
         LUDecomposition lu = A.lu();
 
         Matrix x = new Matrix(new double[order+1],order+1);
