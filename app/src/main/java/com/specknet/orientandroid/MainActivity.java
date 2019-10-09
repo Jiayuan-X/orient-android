@@ -334,7 +334,6 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
                 // we've got a block to work with
                 SavGolay sg = new SavGolay(4, 4, 4);
                 double[] filtered = sg.filterData(gyros);
-                gyros = new double[30];
                 counter = 0;
 
 
