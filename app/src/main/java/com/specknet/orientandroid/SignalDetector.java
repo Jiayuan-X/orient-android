@@ -64,7 +64,12 @@ public class SignalDetector {
                 stats.addValue(filteredData.get(j));
             }
             avgFilter.set(i, stats.getMean());
-            stdFilter.set(i, Math.sqrt(stats.getPopulationVariance()));
+            double popvar = stats.getPopulationVariance();
+            if (popvar < 430.0) {
+                stdFilter.set(i, Math.sqrt(470.0));
+            } else {
+                stdFilter.set(i, Math.sqrt(stats.getPopulationVariance()));
+            }
             stats.clear();
         }
 

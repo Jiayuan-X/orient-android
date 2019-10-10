@@ -353,8 +353,23 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
                 double threshold = 1;
                 double influence = 0.2;
                 List<Double> data = new ArrayList<>();
+                double max = filtered[0];
+                double min = filtered[0];
                 for (int i = 0; i < filtered.length; i++) {
-                    data.add(filtered[i]);
+                    double x = filtered[i];
+                    data.add(x);
+                    if (x > max) {
+                        max = x;
+                    }
+                    if (x < min) {
+                        min = x;
+                    }
+                }
+
+                double range = Math.abs(max - min);
+                if (range < 50.0) {
+                    gyros = new double[COUNT_WINDOW];
+                    return; // skip rest of handling
                 }
 
                 HashMap<String, List> resultsMap = sd.analyzeDataForSignals(data, lag, threshold, influence);
