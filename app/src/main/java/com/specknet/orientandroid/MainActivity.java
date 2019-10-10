@@ -39,6 +39,8 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 import io.reactivex.disposables.Disposable;
 import pub.devrel.easypermissions.AfterPermissionGranted;
@@ -50,7 +52,8 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     // by scanning for devices with the NRF Connect App
 
     //private static final String ORIENT_BLE_ADDRESS = "EB:25:6B:57:DF:30";
-    private static final String ORIENT_BLE_ADDRESS = "E3:7F:D4:0A:90:74";
+    //private static final String ORIENT_BLE_ADDRESS = "E3:7F:D4:0A:90:74";
+    private static final String ORIENT_BLE_ADDRESS = "F1:5D:0F:10:91:85";
 
     private static final String ORIENT_QUAT_CHARACTERISTIC = "00001526-1212-efde-1523-785feabcd125";
     private static final String ORIENT_RAW_CHARACTERISTIC = "ef680406-9b35-4933-9b10-52ffa9740042";
@@ -151,6 +154,14 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
         accelTextView = findViewById(R.id.accelTextView);
         gyroTextView = findViewById(R.id.gyroTextView);
         freqTextView = findViewById(R.id.freqTextView);
+        GraphView graph = (GraphView) findViewById(R.id.graph2);
+        graph.getViewport().setXAxisBoundsManual(true);
+        graph.getViewport().setMinX(0);
+        graph.getViewport().setMaxX(COUNT_WINDOW);
+        graph.getViewport().setScrollable(true); // enables horizontal scrolling
+        graph.getViewport().setScrollableY(true); // enables vertical scrolling
+        graph.getViewport().setScalable(true); // enables horizontal zooming and scrolling
+        graph.getViewport().setScalableY(true); // enables vertical zooming and scrolling
 
         start_button.setOnClickListener(v-> {
 
@@ -337,14 +348,37 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
                 double[] filtered = sg.filterData(gyros);
                 counter = 0;
 
-
-                int peaks = 0;
-                for (int i = 0; i<filtered.length-2; i++) {
-                    if ((filtered[i+1]-filtered[i])*(filtered[i+2]-filtered[i+1]) < 0) { // changed sign?
-                        peaks += 1;
-                    }
+                SignalDetector sd = new SignalDetector();
+                int lag = 30;
+                double threshold = 1;
+                double influence = 0.2;
+                List<Double> data = new ArrayList<>();
+                for (int i = 0; i < filtered.length; i++) {
+                    data.add(filtered[i]);
                 }
-                steps += peaks;
+
+                HashMap<String, List> resultsMap = sd.analyzeDataForSignals(data, lag, threshold, influence);
+
+//                int peaks = 0;
+//                for (int i = 0; i<filtered.length-2; i++) {
+//                    if ((filtered[i+1]-filtered[i])*(filtered[i+2]-filtered[i+1]) < 0) { // changed sign?
+//                        peaks += 1;
+//                    }
+//                }
+//                steps += peaks;
+                List signals = resultsMap.get("signals");
+                int lastsig = 0;
+                int count = 0;
+                for (int i = 0; i < signals.size(); i++) {
+                    int current = (int) signals.get(i);
+                    if (lastsig != current) {
+                        if (lastsig == 0 & current != 0) {
+                            count++;
+                        }
+                    }
+                    lastsig = current;
+                }
+                steps += count;
 
                 com.jjoe64.graphview.series.DataPoint[] points = new com.jjoe64.graphview.series.DataPoint[COUNT_WINDOW];
                 com.jjoe64.graphview.series.DataPoint[] filteredpoints = new com.jjoe64.graphview.series.DataPoint[COUNT_WINDOW];
