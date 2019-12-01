@@ -1,6 +1,6 @@
 package com.specknet.orientandroid;
 
-import Java.*;
+import Jama.*;
 
 /** Class implements the Savitzy-Golay filter.  The algorithm is based on
  * the algorithm used in
