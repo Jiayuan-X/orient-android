@@ -1,4 +1,4 @@
-package com.specknet.orientandroid;
+package uk.rphi.uoe.pdiotsteps;
 
 import android.Manifest;
 import android.app.Activity;
@@ -16,6 +16,8 @@ import com.polidea.rxandroidble2.RxBleClient;
 import com.polidea.rxandroidble2.RxBleDevice;
 import com.polidea.rxandroidble2.scan.ScanSettings;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.UUID;
 
 import io.reactivex.disposables.Disposable;
@@ -169,7 +171,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
     private void handleRawPacket(final byte[] bytes) {
 
-        int word = (bytes[0] & 0xff) | (bytes[1] & 0xff) >> 8;
+        int word = (bytes[0] & 0xff) | ((bytes[1] & 0xff) << 8);
 
         runOnUiThread(() -> {
                     captureTimetextView.setText(String.valueOf(word));
