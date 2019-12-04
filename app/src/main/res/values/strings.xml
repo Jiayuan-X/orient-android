@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">OrientAndroid</string>
+    <string name="app_name">NRFcounter</string>
     <string name="location_and_storage_rationale">This app requires location permission to scan for BLE devices and storage permission to log data to a CSV file</string>
 
     <!-- TODO: Remove or change this placeholder text -->
